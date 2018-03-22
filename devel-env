@@ -1,0 +1,2 @@
+#!/bin/bash
+docker run -it -v $PWD:/app -v $HOME/Repos/techhub/fabian.doerk/mah-ansible/:/data --entrypoint=/bin/bash bootstrap:latest

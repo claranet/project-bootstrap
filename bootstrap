@@ -1,0 +1,259 @@
+#!/bin/bash
+#
+#   Copyright 2018 Claranet GmbH
+#
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
+
+set -e
+
+VERSION=0.0.1
+
+APP_DIR=/app
+PRJ_DIR=/data
+TEMPLATES_DIR="$PRJ_DIR/.templates"
+BOOTSTRAP_DIR=${PRJ_DIR}/.bootstrap
+HOOKS_DIR=$BOOTSTRAP_DIR/hooks.d
+
+INPUT_FILE=${BOOTSTRAP_DIR}/input.yaml
+SCHEMA_FILE=${BOOTSTRAP_DIR}/schema.yaml
+INPUT_CONTENT=""
+SCHEMA_CONTENT=""
+
+GIT_PUSH=""
+GIT_REMOTE=""
+
+
+## Colors
+ERROR_BKG="\033[101m" # background red
+GREEN_BKG="\033[42m" # background green
+YELLOW_BKG="\033[43m" # background yellow
+
+GREEN_TEXT="\033[32m" # text green
+WHITE_TEXT="\033[97m" # text white
+BLACK_TEXT="\033[30" # text black
+NC="\033[0m" # reset
+
+log_in_file() {
+    local logfile=$2
+    if [[ -n $logfile ]]; then
+        echo -e "$(date "+[%Y-%m-%d %H:%M:%S]") ${1}" >> $logfile
+    fi
+}
+
+debug() {
+    echo -e "DEBUG: ${1}"
+    #log_in_file "DEBUG: ${1}" "$2"
+}
+
+info() {
+    echo -e "${GREEN_TEXT}INFO: ${1}${NC}"
+    #log_in_file "INFO: ${1}" "$2"
+}
+
+warn() {
+    echo -e "${YELLOW_BKG}WARN:_${1}${NC}"
+    #log_in_file "WARN: ${1}" "$2"
+}
+
+error() {
+    echo -e "${WHITE_TEXT}${ERROR_BKG}ERROR: ${1}${NC}"
+    #log_in_file "ERROR: ${1}" "$2"
+}
+
+die() {
+    echo -e "${WHITE_TEXT}${ERROR_BKG}CRITICAL${1}${NC}"
+    #log_in_file "CRITICAL: ${1}" "$2"
+    exit 1
+}
+
+
+# Check if an argument was provided to the given option;
+# Check if the file provided as an argument exists
+check_arg_exist() {
+    [[ -z $2 || $2 == "-"* ]] && die "argument $1 requires an argument!"
+}
+
+
+do_git() {
+    # Retrieving user info
+    USER=$(git config user.email 2>/dev/null | tr -d '\n')
+
+    DEFAULT_GIT_REMOTE=`git remote -v 2>/dev/null | grep push | awk '{print $2}'`
+
+    if [[ -n $GIT_PUSH ]]; then
+        [[ -z $GIT_REMOTE ]] && GIT_REMOTE="origin"
+        info "Doing initial git commit"
+        git add $PRJ_DIR
+        git commit -a -m "Initial commit of freshly bootstrapped project"
+        info "Pushing to git remote"
+        git push $GIT_REMOTE master
+    fi
+}
+
+
+validate() {
+    info "Validating input values file"
+    yamale -s $SCHEMA_FILE $INPUT_FILE 2>/dev/null || exit 1
+}
+
+
+# Move all files/dirs from the data dir into a subfolder called .templates
+prepare() {
+    if [[ ! -d $TEMPLATES_DIR ]]; then
+        info "Moving templates off top level directory to .templates subfolder"
+        mkdir -p $TEMPLATES_DIR
+        find . -maxdepth 1 \
+            ! -name .git -a \
+            ! -name . \
+            ! -name .templates \
+            ! -name .bootstrap \
+              -print0 | xargs -0 -I % mv % $TEMPLATES_DIR/
+    fi
+}
+
+
+find_fanout_templates() {
+    find $TEMPLATES_DIR -type f -name '*%[[:alnum:]_]*%*'
+}
+
+
+process() {
+    # Process template dir and places result structure to output dir
+    info "Processing template files and creating dir structure"
+    gomplate --input-dir=$TEMPLATES_DIR \
+             --output-dir=$PRJ_DIR \
+             --datasource config=$INPUT_FILE \
+             --exclude $TEMPLATES_DIR/ansible/inventory \
+             --exclude $TEMPLATES_DIR/HOWTO-BOOTSTRAP.md \
+             $( find_fanout_templates | xargs -r -I % -- echo --exclude % )
+
+    process_fanout_files
+}
+
+
+process_fanout_files() {
+    for tpl_file in $( find_fanout_templates ); do
+        # translate path from template path to óutput path
+        out_file="${tpl_file/$TEMPLATES_DIR/$PRJ_DIR}"
+        # carve out only the substring between %...% and make it yaml querieable
+        input_var=".$(echo $out_file | cut -d % -f 2)[]"
+        # query input yaml files for values
+        values=`yq "$input_var" < $INPUT_FILE | tr '\n' ' ' | tr -d '"'`
+        for val in $values; do
+            out_file_evaluated=$(echo $out_file | sed -e "s/%[[:alnum:]_]*%/$val/")
+            info "Processing fanout template individually: $tpl_file -> $out_file_evaluated"
+            gomplate --file $tpl_file \
+                     --out $out_file_evaluated \
+                     --datasource config=$INPUT_FILE
+        done
+    done
+}
+
+
+exec_hooks() {
+      if [ -d "$HOOKS_DIR" ]; then
+
+        # provide script counting to inform the user about how many steps are available
+        local available_scripts=`find $HOOKS_DIR -type f | sort`
+        local scripts_count=`echo "$available_scripts" | wc -l`
+        local scripts_counter=1
+
+        for f in $available_scripts; do
+          local script_name=`basename $f`
+
+          info "Executing project custom hook ($scripts_counter/$scripts_count): $script_name"
+          source $f
+          let "scripts_counter += 1"
+        done
+      fi
+}
+
+
+reset() {
+    warn "CAUTION: You are about to revert all your local changes!"
+    git status
+    warn "CAUTION: This will delete all currently modified/untracked files/dirs!"
+    warn "CAUTION: Press ctrl-c to abort or press enter to continue!"
+    read
+    git reset --hard HEAD && git clean -dfx
+    info "All template changes were undone."
+}
+
+
+usage() {
+    cat <<EOU
+Create directory hierarchy serving as the project repository
+
+Usage: $0 [OPTIONS]
+
+Options:
+  --git-push [REMOTE]   Automatically commit and push initial state after bootstrap to remote repository
+  -i, --input [FILE]    Input yaml file to read all relevant variables for template evaluation from
+  -r, --reset           Reset git working directory
+  -s, --schema [FILE]   Schema definition to validate input yaml file against
+  -h, --help            Print this help
+
+EOU
+}
+
+
+args() {
+    while [[ "$1" != "" ]]; do
+        case "$1" in
+            --git-push)
+                GIT_PUSH=TRUE
+                if [[ "$2" != "-"* ]]; then
+                    GIT_REMOTE="$2"
+                    shift
+                fi
+                shift
+            ;;
+            --help | -h)
+                usage
+                exit 0
+            ;;
+            --input | -i)
+                check_arg_exist "$1" "$2"
+                [ ! -e $2 ] && die "input file not found or not existent: $2"
+                INPUT_FILE=$2
+                INPUT_CONTENT="$(cat $2)"
+                shift 2
+            ;;
+            --schema | -s)
+                check_arg_exist "$1" "$2"
+                [ ! -e $2 ] && die "schema file not found or not existent: $2"
+                SCHEMA_FILE=$2
+                SCHEMA_CONTENT="$(cat $2)"
+                shift 2
+            ;;
+            --reset | -r) # Reset changes
+                reset
+                exit 0
+            ;;
+            *)  # End of options
+                shift
+            ;;
+        esac
+    done
+}
+
+
+cd $PRJ_DIR
+
+args $*
+validate
+prepare
+process
+exec_hooks
+
+info "Successfully evaluated templates"

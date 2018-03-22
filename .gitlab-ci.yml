@@ -1,0 +1,21 @@
+image: docker:latest
+
+variables:
+  BOOTSTRAP_IMAGE: $CI_REGISTRY/de-project-templates/bootstrap
+  BOOTSTRAP_IMAGE_LATEST: $CI_REGISTRY/de-project-templates/bootstrap:latest
+
+stages:
+  - build
+  - push
+
+build_image:
+  stage: build
+  script:
+    - docker build -t $BOOTSTRAP_IMAGE .
+
+push_to_registry:
+  stage: push
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker tag $BOOTSTRAP_IMAGE $BOOTSTRAP_IMAGE_LATEST
+    - docker push $BOOTSTRAP_IMAGE_LATEST
