@@ -9,7 +9,7 @@ branches:
     - /^\d+\.\d+\.\d+$/
 
 env:
-  - LATEST=0.0.1
+  - LATEST=0.0.2
 
 before_script:
   - env | sort
@@ -19,5 +19,6 @@ before_script:
 script:
   - docker build -t $IMAGE:$VERSION -t $IMAGE:latest .
   - docker images
+  - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
   - docker push $IMAGE:$VERSION
   - docker push $IMAGE:latest
