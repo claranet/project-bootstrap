@@ -1,0 +1,23 @@
+sudo: false
+language: bash
+services:
+  - docker
+
+branches:
+  only:
+    - master
+    - /^\d+\.\d+\.\d+$/
+
+env:
+  - LATEST=0.0.1
+
+before_script:
+  - env | sort
+  - export IMAGE="claranet/project-bootstrap"
+  - export VERSION="${TRAVIS_BRANCH:-${TRAVIS_TAG}}"
+
+script:
+  - docker build -t $IMAGE:$VERSION -t $IMAGE:latest .
+  - docker images
+  - docker push $IMAGE:$VERSION
+  - docker push $IMAGE:latest
