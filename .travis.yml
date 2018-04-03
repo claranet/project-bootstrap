@@ -17,8 +17,11 @@ before_script:
   - export VERSION="${TRAVIS_BRANCH:-${TRAVIS_TAG}}"
 
 script:
-  - docker build -t $IMAGE:$VERSION -t $IMAGE:latest .
+  - docker build -t $IMAGE:$VERSION .
   - docker images
   - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
-  - docker push $IMAGE:$VERSION
-  - docker push $IMAGE:latest
+  - if [ -n "$LATEST" -a "$TRAVIS_TAG" == "$LATEST" ]; then \
+      docker tag $IMAGE:$VERSION $IMAGE:latest; \
+      docker push $IMAGE:$VERSION; \
+      docker push $IMAGE:latest; \
+    fi
