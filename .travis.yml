@@ -19,9 +19,9 @@ before_script:
 script:
   - docker build -t $IMAGE:$VERSION .
   - docker images
-  - docker login -u "$DOCKER_USERNAME" -p "$DOCKER_PASSWORD"
-  - if [ -n "$LATEST" -a "$TRAVIS_TAG" == "$LATEST" ]; then \
-      docker tag $IMAGE:$VERSION $IMAGE:latest; \
-      docker push $IMAGE:$VERSION; \
-      docker push $IMAGE:latest; \
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  - if [ -n "$LATEST" -a "$TRAVIS_TAG" == "$LATEST" ]; then
+      docker tag $IMAGE:$VERSION $IMAGE:latest;
+      docker push $IMAGE:$VERSION;
+      docker push $IMAGE:latest;
     fi
