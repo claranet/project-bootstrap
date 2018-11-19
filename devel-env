@@ -1,2 +1,15 @@
 #!/bin/bash
-docker run -it -v $PWD:/app -v $HOME/Repos/techhub/fabian.doerk/mah-ansible/:/data --entrypoint=/bin/bash bootstrap:latest
+# Start a local container with source code bind mounted in and drop you in a
+# shell. You are then able to iterate quickly while developing the code from the
+# outside.
+
+if [ -z "$1" ]; then
+    echo "No template directory given!"
+    echo "usage: $0 /path/to/templates"
+    exit 1
+fi
+docker run -it \
+    -v $PWD:/app \
+    -v $(realpath $1):/data \
+    --entrypoint=/bin/bash \
+    claranet/project-bootstrap:latest
