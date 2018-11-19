@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# Wrapper script to the actual bootstrapping script provided via
+# docker image. This script is meant to be ran from inside of the template
+# directory.
+
+PROJECT_TYPE=ansible
+IMAGE=claranet/project-bootstrap:latest
+ROOT_DIR=$(cd $(dirname $0) && cd .. && pwd)
+
+docker run \
+    -it \
+    -e PROJECT_TYPE \
+    -v $HOME/.gitconfig:/root/.gitconfig \
+    -v $HOME/.ssh:/root/.ssh \
+    -v $ROOT_DIR:/data \
+    -v $INPUT:/app/etc/input.yaml \
+    -v $SCHEMA:/app/etc/schema.yaml \
+    --rm \
+    $IMAGE $*
