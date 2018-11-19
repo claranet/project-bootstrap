@@ -1,0 +1,13 @@
+#!/bin/bash
+# Usage:_ $0 [<base image>]
+
+set -xeo pipefail
+
+ROOT="$(realpath $0 | xargs dirname)"
+IMAGE=${IMAGE:-"claranet/project-bootstrap"}
+VERSION=${VERSION:-$(cat $ROOT/VERSION)}
+
+[[ -n "$BUILD_NUMBER" ]] && VERSION="$VERSION-$BUILD_NUMBER"
+
+echo "[INFO] Building $IMAGE:$VERSION"
+docker build -t $IMAGE:$VERSION .
