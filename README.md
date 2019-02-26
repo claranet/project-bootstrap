@@ -117,6 +117,8 @@ The procedure as a whole is defined as the following:
         * `ansible/inventory-devel`
         * `ansible/inventory-stage`
 
+This is the same for directories but only one level deep. So `ansible/inventory-%environments%/` resolves to `ansible/inventory-prod/`, but `ansible/inventory-%environments/%other_var%/` only resolves to `ansible/inventory-prod/%other_var%`
+
 ### Project Custom Hooks
 
 Since we are dealing with a variety of different project types and equally we are striving for keeping this mechanism as generic as possible this script expects project template custom hooks.
