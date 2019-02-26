@@ -126,6 +126,9 @@ find_fanout_templates() {
     find $TEMPLATES_DIR -type f -name '*%[[:alnum:]_]*%*'
 }
 
+find_fanout_directories() {
+    find $TEMPLATES_DIR -type d -name '*%[[:alnum:]_]*%*'
+}
 
 process() {
     # Process template dir and places result structure to output dir
@@ -135,8 +138,10 @@ process() {
              --datasource config=$INPUT_FILE \
              --exclude $TEMPLATES_DIR/ansible/inventory \
              --exclude $TEMPLATES_DIR/HOWTO-BOOTSTRAP.md \
+             $( find_fanout_directories | xargs -r -I % -- echo --exclude % ) \
              $( find_fanout_templates | xargs -r -I % -- echo --exclude % )
 
+    process_fanout_directories
     process_fanout_files
 }
 
@@ -155,6 +160,25 @@ process_fanout_files() {
             gomplate --file $tpl_file \
                      --out $out_file_evaluated \
                      --datasource config=$INPUT_FILE
+        done
+    done
+}
+
+process_fanout_directories() {
+    for tpl_dir in $( find_fanout_directories ); do
+        # translate path from template path to óutput path
+        out_dir="${tpl_dir/$TEMPLATES_DIR/$PRJ_DIR}"
+        # carve out only the substring between %...% and make it yaml querieable
+        input_var=".$(echo $out_dir | cut -d % -f 2)[]"
+        # query input yaml files for values
+        values=`yq "$input_var" < $INPUT_FILE | tr '\n' ' ' | tr -d '"'`
+        for val in $values; do
+            out_dir_evaluated=$(echo $out_dir | sed -e "s/%[[:alnum:]_]*%/$val/")
+            info "Processing fanout directories individually: $tpl_dir -> $out_dir_evaluated"
+            mkdir -p $out_dir_evaluated
+            gomplate --input-dir=$tpl_dir \
+              --output-dir=$out_dir_evaluated \
+              --datasource config=$INPUT_FILE
         done
     done
 }
