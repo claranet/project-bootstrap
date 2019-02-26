@@ -152,14 +152,18 @@ process_fanout_files() {
         out_file="${tpl_file/$TEMPLATES_DIR/$PRJ_DIR}"
         # carve out only the substring between %...% and make it yaml querieable
         input_var=".$(echo $out_file | cut -d % -f 2)[]"
+        input_var_plain="$(echo $out_file | cut -d % -f 2)"
         # query input yaml files for values
         values=`yq "$input_var" < $INPUT_FILE | tr '\n' ' ' | tr -d '"'`
         for val in $values; do
             out_file_evaluated=$(echo $out_file | sed -e "s/%[[:alnum:]_]*%/$val/")
             info "Processing fanout template individually: $tpl_file -> $out_file_evaluated"
+            printf -v $input_var_plain $val
+            export $input_var_plain
             gomplate --file $tpl_file \
                      --out $out_file_evaluated \
                      --datasource config=$INPUT_FILE
+            unset $input_var_plain
         done
     done
 }
@@ -170,15 +174,19 @@ process_fanout_directories() {
         out_dir="${tpl_dir/$TEMPLATES_DIR/$PRJ_DIR}"
         # carve out only the substring between %...% and make it yaml querieable
         input_var=".$(echo $out_dir | cut -d % -f 2)[]"
+        input_var_plain="$(echo $out_dir | cut -d % -f 2)"
         # query input yaml files for values
         values=`yq "$input_var" < $INPUT_FILE | tr '\n' ' ' | tr -d '"'`
         for val in $values; do
             out_dir_evaluated=$(echo $out_dir | sed -e "s/%[[:alnum:]_]*%/$val/")
             info "Processing fanout directories individually: $tpl_dir -> $out_dir_evaluated"
             mkdir -p $out_dir_evaluated
+            printf -v $input_var_plain $val
+            export $input_var_plain
             gomplate --input-dir=$tpl_dir \
               --output-dir=$out_dir_evaluated \
               --datasource config=$INPUT_FILE
+            unset $input_var_plain
         done
     done
 }
