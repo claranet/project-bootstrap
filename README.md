@@ -7,16 +7,16 @@ pre-configured template project into a new, ready to use, repository.
 
 <!-- vim-markdown-toc GFM -->
 
-* [Why?](#why)
-* [User Guide](#user-guide)
-    * [Requisites](#requisites)
-    * [Steps](#steps)
-    * [Idea](#idea)
-* [Implementation](#implementation)
-    * [Premises](#premises)
-    * [Algorithm](#algorithm)
-    * [Fanout Template Files](#fanout-template-files)
-    * [Project Custom Hooks](#project-custom-hooks)
+- [Why?](#why)
+- [User Guide](#user-guide)
+  - [Requisites](#requisites)
+  - [Steps](#steps)
+  - [Idea](#idea)
+- [Implementation](#implementation)
+  - [Premises](#premises)
+  - [Algorithm](#algorithm)
+  - [Fanout Template Files](#fanout-template-files)
+  - [Project Custom Hooks](#project-custom-hooks)
 
 <!-- vim-markdown-toc -->
 
@@ -116,6 +116,10 @@ The procedure as a whole is defined as the following:
         * `ansible/inventory-prod`
         * `ansible/inventory-devel`
         * `ansible/inventory-stage`
+
+This is the same for directories but only one level deep. So `ansible/inventory-%environments%/` resolves to `ansible/inventory-prod/`, but `ansible/inventory-%environments/%other_var%/` only resolves to `ansible/inventory-prod/%other_var%`
+
+Additionaly the variable over that we itterate is provided as environment variable. So for `ansible/inventory-%environments%` on the itteration of `stage` an environment variable called `environments` is avaible with the content of `stage`.
 
 ### Project Custom Hooks
 
