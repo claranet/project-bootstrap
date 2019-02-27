@@ -7,16 +7,16 @@ pre-configured template project into a new, ready to use, repository.
 
 <!-- vim-markdown-toc GFM -->
 
-- [Why?](#why)
-- [User Guide](#user-guide)
-  - [Requisites](#requisites)
-  - [Steps](#steps)
-  - [Idea](#idea)
-- [Implementation](#implementation)
-  - [Premises](#premises)
-  - [Algorithm](#algorithm)
-  - [Fanout Template Files](#fanout-template-files)
-  - [Project Custom Hooks](#project-custom-hooks)
+* [Why?](#why)
+* [User Guide](#user-guide)
+    * [Requisites](#requisites)
+    * [Steps](#steps)
+    * [Idea](#idea)
+* [Implementation](#implementation)
+    * [Premises](#premises)
+    * [Algorithm](#algorithm)
+    * [Fanout Template Files](#fanout-template-files)
+    * [Project Custom Hooks](#project-custom-hooks)
 
 <!-- vim-markdown-toc -->
 
@@ -92,23 +92,27 @@ directory as well.
 
 * Validate given input file against the given schema
 * Create a subfolder called `.templates`
-* Move over all files and directories from the top level into this `.templates` folder
-* Process all files under this `.templates` folder as templates via `gomplate` and write result to top level of this repo
+* Move over all files and directories from the top level into this `.templates`
+  folder
+* Process all files under this `.templates` folder as templates via `gomplate`
+  and write result to top level of this repo
 * Process fan out templates individually (see section below)
 * Execute project template supplied hooks
 
 ### Fanout Template Files
 
-There exist templates which evaluates to multiple resulting files depending on
-supplied input values. The file name of the template serves as template by its
-own. Part of it will be used to query the input values file.
+There exist the possibility that templates evaluate to multiple effective files
+depending on supplied input values. This is called fan out. Hereby the name of
+the template file serves as template string by its own. Part of it will be used
+to query the input values file.
 
 The procedure as a whole is defined as the following:
 
 * Find all templates files by the pattern `%[[:alnum:]_]*%`
 * Extract this substring
 * Query input yaml file for an array named this way
-* For each element of the array write a separate output file (thats why it called fan out templates)
+* For each element of the array write a separate output file (thats why it
+  called fan out templates)
 * Example:
     * A template file called `ansible/inventory-%environments%`
     * Query input value: `environments: [ 'prod', 'devel', 'stage' ]`
@@ -117,12 +121,16 @@ The procedure as a whole is defined as the following:
         * `ansible/inventory-devel`
         * `ansible/inventory-stage`
 
-This is the same for directories but only one level deep. So `ansible/inventory-%environments%/` resolves to `ansible/inventory-prod/`, but `ansible/inventory-%environments/%other_var%/` only resolves to `ansible/inventory-prod/%other_var%`
+This is the same for directories but only one level deep. So
+`ansible/inventory-%environments%/` resolves to `ansible/inventory-prod/`, but
+`ansible/inventory-%environments/%other_var%/` only resolves to
+`ansible/inventory-prod/%other_var%`
 
-Additionaly the variable over that we itterate is provided as environment variable. So for `ansible/inventory-%environments%` on the itteration of `stage` an environment variable called `environments` is avaible with the content of `stage`.
 
 ### Project Custom Hooks
 
-Since we are dealing with a variety of different project types and equally we are striving for keeping this mechanism as generic as possible this script expects project template custom hooks.
+Since we are dealing with a variety of different project types and equally we
+are striving for keeping this mechanism as generic as possible this script
+expects project template custom hooks.
 
 These hooks are exepexted to be found under `.bootstrap/hooks.d/`.
