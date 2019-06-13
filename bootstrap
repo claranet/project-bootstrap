@@ -136,10 +136,10 @@ process() {
     gomplate --input-dir=$TEMPLATES_DIR \
              --output-dir=$PRJ_DIR \
              --datasource config=$INPUT_FILE \
-             --exclude $TEMPLATES_DIR/ansible/inventory \
-             --exclude $TEMPLATES_DIR/HOWTO-BOOTSTRAP.md \
-             $( find_fanout_directories | xargs -r -I % -- echo --exclude % ) \
-             $( find_fanout_templates | xargs -r -I % -- echo --exclude % )
+             --exclude ansible/inventory \
+             --exclude HOWTO-BOOTSTRAP.md \
+             $( find_fanout_directories | sed 's;'"$TEMPLATES_DIR"';;' | xargs -r -I % -- echo --exclude % ) \
+             $( find_fanout_templates | sed 's;'"$TEMPLATES_DIR"';;' | xargs -r -I % -- echo --exclude % )
 
     process_fanout_directories
     process_fanout_files
