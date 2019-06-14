@@ -130,21 +130,32 @@ find_fanout_directories() {
     find $TEMPLATES_DIR -type d -name '*%[[:alnum:]_]*%*'
 }
 
+find_symlinks() {
+    find $TEMPLATES_DIR -type l
+}
+
 process() {
     # Process template dir and places result structure to output dir
     info "Processing template files and creating dir structure"
     gomplate --input-dir=$TEMPLATES_DIR \
              --output-dir=$PRJ_DIR \
              --datasource config=$INPUT_FILE \
-             --exclude $TEMPLATES_DIR/ansible/inventory \
-             --exclude $TEMPLATES_DIR/HOWTO-BOOTSTRAP.md \
-             $( find_fanout_directories | xargs -r -I % -- echo --exclude % ) \
-             $( find_fanout_templates | xargs -r -I % -- echo --exclude % )
+             --exclude ansible/inventory \
+             --exclude HOWTO-BOOTSTRAP.md \
+             $( find_fanout_directories | sed 's;'"$TEMPLATES_DIR"';;' | xargs -r -I % -- echo --exclude % ) \
+             $( find_fanout_templates | sed 's;'"$TEMPLATES_DIR"';;' | xargs -r -I % -- echo --exclude % )
 
     process_fanout_directories
     process_fanout_files
+    process_symlinks
 }
 
+
+process_symlinks() {
+  for i in $( find_symlinks ); do
+    cp -P $i ${i/$TEMPLATES_DIR/$PRJ_DIR}
+  done
+}
 
 process_fanout_files() {
     for tpl_file in $( find_fanout_templates ); do
