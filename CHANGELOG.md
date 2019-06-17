@@ -2,7 +2,10 @@
 
 ## Ongoing
 
-...
+
+## 0.0.7
+
+* Fix symlink handling: copying symlinks over from the template folder
 
 ## 0.0.6
 
